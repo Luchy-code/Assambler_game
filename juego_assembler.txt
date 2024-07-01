@@ -1,0 +1,405 @@
+.data
+@mapa: 		.asciz "+------------------------------------------------+\n| **************** |\n| *** VIBORITA *** |\n| **************** |\n+------------------------------------------------+\n| |\n| |\n| @*** |\n| |\n| M |\n| |\n| |\n| |\n| |\n+------------------------------------------------+\n| Puntaje: Nivel: |\n+------------------------------------------------+\n"
+matriz:		.asciz	"+------------------------------------------------+\n|               ****************                 |\n|               *** VIBORITA ***                 |\n|               ****************                 |\n+------------------------------------------------+\n|                                                |\n|                                                |\n|                       ***@                     |\n|                                                |\n|          M                                     |\n|                                                |\n|                                                |\n|                                                |\n|                                                |\n+------------------------------------------------+\n| Puntaje:                            Nivel:     |\n+------------------------------------------------+"
+
+longitud =     .-matriz
+cls:		.asciz	"\x1b[H\x1b[2J"
+largoCls:		.int	13
+elemento:		.byte   ' '
+texto:  .ascii "\nPresione una tecla a:izq d:der w:arriba s:abajo\n"
+gameOver:	.asciz	"             *****@ Game  Over @*****   \n"
+largoGameOver=  .-gameOver
+vector:			.int 284,335,260,311
+vector2:    		.int 381,382,383,384
+
+.text
+mostrarMapa:
+	mov  r7, #4 		@ Salida por pantalla
+	mov  r0, #1 		@ Indicamos a SWI que sera una cadena
+	ldr  r2, =longitud 	@ TamaÃ±o de la cadena
+	ldr  r1, =matriz
+	swi  0
+	bx   lr
+
+limpiarPantalla:
+	mov  r0, #1
+	ldr  r1, =cls
+	ldr  r2, =largoCls
+	mov  r7, #4
+	swi  #0
+	bx   lr
+
+
+instruccionesJuego:
+	.fnstart
+	push {lr}
+
+	mov r7, #4		@ salida por pantalla
+	mov r0, #1
+	mov r2, #50		@ tamaño de la cadena
+	ldr r1, =texto	
+	swi 0
+
+	pop {lr}
+	bx  lr
+	.fnend
+
+leerTecla:
+	mov  r7, #3		@ leo lo que ingresa desde el teclado
+	mov  r0, #0		@ ingreso string
+	mov  r2, #1		@ leo cantidad elementos string
+	ldr  r1,=elemento 	@ cargo en r1 lo ingresado
+	swi  0
+	bx   lr
+
+
+
+
+choca:
+	.fnstart
+	push {lr}
+	cmp  r3, #'-'
+	beq  pantallaGameOver
+	cmp  r3, #'|'
+	beq  pantallaGameOver
+	pop  {lr}
+	bx   lr
+	.fnend
+
+pantallaGameOver:
+	
+	.fnstart	
+	ldr r0,=matriz
+	mov  r7, #4
+	mov  r0, #1
+	ldr  r2,=largoGameOver
+	ldr  r1,=gameOver
+	swi  0				@ saco "Game Over" x pantalla
+	bal  fin				@ termino el programa
+	.fnend
+
+comerManzana:		
+	push {lr}		
+	cmp r3,#'M'
+	beq actualizarPuntaje
+	pop {lr}
+	bx  lr
+
+actualizarPuntaje:
+	push {lr}		
+	add  r11, #1	
+	bl pasarNivel
+	bl  pantallaPuntaje
+	bl  nuevaManzana
+	pop {lr}
+	bx  lr
+
+pantallaPuntaje:		
+	.fnstart
+	push {lr}
+	ldr  r0,=matriz		
+	mov  r1, #776		
+	mov  r2, r11		
+	add  r2, #48		
+	strb r2, [r0, r1]	
+	pop {lr}
+	bx   lr
+	.fnend
+
+
+nuevaManzana:		
+	.fnstart
+	push {lr}
+	ldr r0,=matriz
+	add r0,#250
+	add r0,r12
+	mov  r1, #'M'
+	strb r1,[r0]
+	pop {lr}
+	bx   lr
+	.fnend
+
+
+pasarNivel:
+	.fnstart
+	push {lr}
+
+	cmp r11,#4
+		
+	beq subeNivel
+	
+	pop {lr}
+	bx   lr
+	.fnend
+
+subeNivel:
+	.fnstart
+	push {lr}
+	ldr r0,=matriz
+	ldr r1,=vector
+	mov  r2, #'|'
+	
+	ldr r4,[r1,#0]
+	strb r2,[r0,r4]
+	
+	ldr r4,[r1,#4]
+	strb r2,[r0,r4]	
+
+	ldr r4,[r1,#8]
+	strb r2,[r0,r4]	
+
+	ldr r4,[r1,#12]
+	strb r2,[r0,r4]	
+
+	
+	mov r11,#0
+	add r8,#1
+	bl pantallaNiveles
+
+	pop {lr}
+	bx   lr
+	.fnend
+
+pantallaNiveles:
+		
+	.fnstart
+	push {lr}
+	ldr  r0,=matriz		
+	mov  r1, #812		
+	mov  r2, r8		
+	add  r2, #48		
+	strb r2, [r0, r1]	
+	pop {lr}
+	bx   lr
+	.fnend
+
+	
+
+
+moverVibora:			@Movimiento de la vibora
+	push {lr}
+	ldrb r2, [r1]
+	
+
+
+	cmp  r2, #'w'		@Si se apreta la tecla w , salto a etiquita "arriba"
+	beq  arriba
+
+	cmp  r2, #'a'		@Si se apreta la tecla a , salto a etiquita "izquierda"
+	beq  izquierda
+
+	cmp  r2, #'d'		@Si se apreta la tecla d , salto a etiquita "derecha"
+	beq  derecha
+
+	cmp  r2, #'s'		@Si se apreta la tecla s , salto a etiquita "abajo"
+	beq  abajo
+
+	pop {lr}
+	bx  lr
+	
+derecha:	
+	ldr r2,=matriz
+	ldrb r1,[r2,r4]		@r1 contiene la cabeza de la vibora , "@"
+	
+
+	mov r6,#'*'		
+	
+	ldr r12,=vector2
+		
+	ldr r11,[r12,#12]
+	add r11,#1
+	strb r1,[r2,r11]
+	ldrb r3,[r2,r4]	
+	strb r11[r12 ,#12]
+	
+	ldr r9,[r12,#8]	
+	strb r6,[r2,r4]
+	strb r4,[r12,#8]
+
+
+	ldr r8,[r12,#4]
+	strb r6,[r2,r9]
+	strb r9,[r12,#4]
+
+
+
+	ldr r7,[r12,#0]
+	mov r10,#' '		
+	strb r10,[r2,r7]
+	strb r6,[r2,r8]
+	strb r8,[r12,#0]
+
+
+	
+	add r12,#5		 @Para cambiar la posicion de la manzana	
+	
+	pop {lr}
+	bx lr	
+
+
+abajo:	
+	
+	ldr r2,=matriz
+	ldrb r1,[r2,r4]		@r1 contiene la cabeza de la vibora , "@"
+	mov r6,#'*'		
+	
+	ldr r12,=vector2
+		
+	ldr r11,[r12,#12]
+	add r11,#1
+	strb r1,[r2,r11]
+	ldrb r3,[r2,r4]	
+	strb r11[r12 ,#12]
+	
+	ldr r9,[r12,#8]	
+	strb r6,[r2,r4]
+	strb r4,[r12,#8]
+
+
+	ldr r8,[r12,#4]
+	strb r6,[r2,r9]
+	strb r9,[r12,#4]
+
+
+
+	ldr r7,[r12,#0]
+	mov r10,#' '		
+	strb r10,[r2,r7]
+	strb r6,[r2,r8]
+	strb r8,[r12,#0]
+
+
+
+	add r12,#6
+	
+	pop {lr}
+	bx lr	
+
+
+izquierda:	
+	
+	ldr r2,=matriz
+	ldrb r1,[r2,r4]		@r1 contiene la cabeza de la vibora , "@"
+	mov r6,#'*'		
+	
+	ldr r12,=vector2
+		
+	ldr r11,[r12,#12]
+	add r11,#1
+	strb r1,[r2,r11]
+	ldrb r3,[r2,r4]	
+	strb r11[r12 ,#12]
+	
+	ldr r9,[r12,#8]	
+	strb r6,[r2,r4]
+	strb r4,[r12,#8]
+
+
+	ldr r8,[r12,#4]
+	strb r6,[r2,r9]
+	strb r9,[r12,#4]
+
+
+
+	ldr r7,[r12,#0]
+	mov r10,#' '		
+	strb r10,[r2,r7]
+	strb r6,[r2,r8]
+	strb r8,[r12,#0]
+
+
+	add r12,#4	
+	
+	pop {lr}
+	bx lr	
+
+
+arriba:	
+	
+
+	ldr r2,=matriz
+	ldrb r1,[r2,r4]		@r1 contiene la cabeza de la vibora , "@"
+	mov r6,#'*'		
+	
+	ldr r12,=vector2
+		
+	ldr r11,[r12,#12]
+	add r11,#1
+	strb r1,[r2,r11]
+	ldrb r3,[r2,r4]	
+	strb r11[r12 ,#12]
+	
+	ldr r9,[r12,#8]	
+	strb r6,[r2,r4]
+	strb r4,[r12,#8]
+
+
+	ldr r8,[r12,#4]
+	strb r6,[r2,r9]
+	strb r9,[r12,#4]
+
+
+
+	ldr r7,[r12,#0]
+	mov r10,#' '		
+	strb r10,[r2,r7]
+	strb r6,[r2,r8]
+	strb r8,[r12,#0]
+
+
+	add r12,#2   
+	
+	pop {lr}
+	bx lr	
+
+
+actualizaVibora:	
+	
+	
+	@mov r3,#' '		
+	@strb r3,[r2,r5]		@Se reemplaza el primer "*" encontrado por vacio
+	bx lr
+
+
+
+salir:			@Movimiento de la vibora
+	push {lr}
+	ldrb r2, [r1]
+	cmp  r2, #'q'		@Si se apreta la tecla d , salto a etiquita "derecha"
+	beq  fin
+	pop {lr}
+	bx  lr
+
+
+
+
+.global main
+main:
+	mov r12,#0
+	mov r8,#1
+	
+	
+juego:
+
+	bl   mostrarMapa	@ Salto a mostrarMapa
+
+	bl  instruccionesJuego
+	bl  leerTecla
+
+	bl salir
+	
+		
+
+	bl moverVibora
+	bl choca
+	bl comerManzana
+	bl pantallaNiveles
+
+	bl   limpiarPantalla	@ Salto a limpiarPantalla
+	
+	bal  juego
+
+
+fin:
+	mov  r7, #1
+	swi  0
